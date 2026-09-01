@@ -1,0 +1,654 @@
+{% extends "base.html" %}
+
+{% block title_extra %} — Купить VPN{% endblock %}
+
+{% block content %}
+<section>
+    <h1 class="section-title">
+        <span class="icon">🛒</span>
+        Купить VPN подписку
+    </h1>
+    
+    <div class="purchase-container" style="max-width: 900px; margin: 0 auto;">
+        <!-- Trial Subscription Banner -->
+        <div class="trial-banner" id="trialBanner" style="display: none;">
+            <div class="trial-content">
+                <span class="trial-icon">🎁</span>
+                <div class="trial-text">
+                    <strong>Попробуйте бесплатно!</strong>
+                    <p>Получите тестовую подписку на все сервера на 3 дня. Доступно только один раз.</p>
+                </div>
+                <button type="button" class="btn btn-success" onclick="activateTrial()">
+                    🚀 Активировать тестовый период
+                </button>
+            </div>
+        </div>
+
+        <!-- Pricing Plans -->
+        <div class="pricing-plans">
+            <h2 style="margin-bottom: var(--space-lg);">Выберите тарифный план</h2>
+            <div class="plans-grid">
+                {% for plan_id, plan in pricing.items() %}
+                <div class="plan-card" data-plan-id="{{ plan_id }}" onclick="selectPlan('{{ plan_id }}')">
+                    <div class="plan-header">
+                        <h3>{{ plan.label }}</h3>
+                        <div class="plan-price">{{ plan.price }} ₽</div>
+                    </div>
+                    <div class="plan-features">
+                        <div class="feature">✓ {{ plan.days }} дней доступа</div>
+                        <div class="feature">✓ Безлимитный трафик</div>
+                        <div class="feature">✓ Поддержка 24/7</div>
+                    </div>
+                    <button class="btn btn-primary btn-block select-plan-btn">Выбрать</button>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Purchase Form -->
+        <div class="purchase-form" id="purchaseForm" style="display: none;">
+            <div class="form-card">
+                <h2 style="margin-bottom: var(--space-lg);">Оформление заказа</h2>
+                
+                <form id="vpnOrderForm" onsubmit="submitOrder(event)">
+                    <!-- Selected Plan -->
+                    <div class="form-group">
+                        <label>Выбранный тариф:</label>
+                        <div class="selected-plan-display" id="selectedPlanDisplay">
+                            <span id="selectedPlanLabel"></span>
+                            <span id="selectedPlanPrice"></span>
+                        </div>
+                        <input type="hidden" id="selectedPlanId" name="plan_id">
+                    </div>
+
+                    <!-- Promo Code -->
+                    <div class="form-group">
+                        <label for="promocode">Промокод (необязательно):</label>
+                        <div style="display: flex; gap: var(--space-sm);">
+                            <input type="text" 
+                                   id="promocode" 
+                                   name="promocode" 
+                                   class="form-control" 
+                                   placeholder="Введите промокод"
+                                   style="flex: 1;"
+                                   onchange="updatePrice()">
+                            <button type="button" class="btn btn-secondary" onclick="updatePrice()">
+                                Применить
+                            </button>
+                        </div>
+                        <div id="promoMessage" class="form-hint" style="margin-top: var(--space-xs);"></div>
+                    </div>
+
+                    <!-- Payment Method -->
+                    <div class="form-group">
+                        <label>Способ оплаты:</label>
+                        <div class="payment-methods">
+                            {% for method in payment_methods %}
+                            <label class="payment-method-card" style="cursor: pointer;">
+                                <input type="radio" 
+                                       name="payment_method" 
+                                       value="{{ method.id }}" 
+                                       {% if not method.enabled %}disabled{% endif %}
+                                       {% if loop.first %}checked{% endif %}>
+                                <div class="payment-method-info">
+                                    <span class="payment-icon">{{ method.icon }}</span>
+                                    <span class="payment-name">{{ method.name }}</span>
+                                </div>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Order Summary -->
+                    <div class="order-summary">
+                        <h3>Итого к оплате:</h3>
+                        <div class="summary-row">
+                            <span>Базовая цена:</span>
+                            <span id="basePrice">0 ₽</span>
+                        </div>
+                        <div class="summary-row discount-row" id="discountRow" style="display: none;">
+                            <span>Скидка:</span>
+                            <span id="discountAmount">0 ₽</span>
+                        </div>
+                        <div class="summary-row total-row">
+                            <span><strong>К оплате:</strong></span>
+                            <span><strong id="finalPrice">0 ₽</strong></span>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" class="btn btn-success btn-block btn-lg" id="submitBtn">
+                        💳 Купить сейчас
+                    </button>
+                    
+                    <button type="button" class="btn btn-secondary btn-block" onclick="cancelSelection()" style="margin-top: var(--space-sm);">
+                        ← Вернуться к тарифам
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Orders History -->
+        <div class="orders-history" style="margin-top: var(--space-xl);">
+            <h2 style="margin-bottom: var(--space-lg);">Мои заказы</h2>
+            <div id="ordersList">
+                <p class="text-muted">Загрузка истории заказов...</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    .purchase-container {
+        padding: var(--space-md);
+    }
+
+    /* Trial Banner Styles */
+    .trial-banner {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: var(--radius-md);
+        padding: var(--space-lg);
+        margin-bottom: var(--space-xl);
+        color: white;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+
+    .trial-content {
+        display: flex;
+        align-items: center;
+        gap: var(--space-md);
+    }
+
+    .trial-icon {
+        font-size: 3rem;
+    }
+
+    .trial-text {
+        flex: 1;
+    }
+
+    .trial-text strong {
+        font-size: 1.2rem;
+        display: block;
+        margin-bottom: var(--space-xs);
+    }
+
+    .trial-text p {
+        margin: 0;
+        opacity: 0.9;
+        font-size: 0.95rem;
+    }
+
+    .trial-banner .btn-success {
+        background: white;
+        color: #667eea;
+        border: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .trial-banner .btn-success:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(255,255,255,0.3);
+    }
+
+    .pricing-plans {
+        margin-bottom: var(--space-xl);
+    }
+
+    .plans-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: var(--space-md);
+        margin-bottom: var(--space-lg);
+    }
+
+    .plan-card {
+        background: var(--card-bg);
+        border: 2px solid var(--border-color);
+        border-radius: var(--radius-md);
+        padding: var(--space-md);
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .plan-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    }
+
+    .plan-card.selected {
+        border-color: var(--primary);
+        background: var(--primary-light);
+    }
+
+    .plan-header {
+        text-align: center;
+        margin-bottom: var(--space-md);
+    }
+
+    .plan-header h3 {
+        margin: 0 0 var(--space-xs) 0;
+        font-size: 1.2rem;
+    }
+
+    .plan-price {
+        font-size: 1.8rem;
+        font-weight: bold;
+        color: var(--primary);
+    }
+
+    .plan-features {
+        margin-bottom: var(--space-md);
+    }
+
+    .feature {
+        padding: var(--space-xs) 0;
+        font-size: 0.9rem;
+        color: var(--text-color);
+    }
+
+    .select-plan-btn {
+        width: 100%;
+    }
+
+    .form-card {
+        background: var(--card-bg);
+        border-radius: var(--radius-md);
+        padding: var(--space-lg);
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .form-group {
+        margin-bottom: var(--space-md);
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: var(--space-xs);
+        font-weight: 500;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: var(--space-sm);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        background: var(--input-bg);
+        color: var(--text-color);
+    }
+
+    .selected-plan-display {
+        background: var(--primary-light);
+        padding: var(--space-sm);
+        border-radius: var(--radius-sm);
+        display: flex;
+        justify-content: space-between;
+        font-weight: 500;
+    }
+
+    .payment-methods {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-sm);
+    }
+
+    .payment-method-card {
+        display: flex;
+        align-items: center;
+        padding: var(--space-sm);
+        border: 2px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        transition: all 0.2s ease;
+    }
+
+    .payment-method-card:hover {
+        border-color: var(--primary);
+    }
+
+    .payment-method-card input[type="radio"] {
+        margin-right: var(--space-sm);
+    }
+
+    .payment-method-info {
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
+    }
+
+    .payment-icon {
+        font-size: 1.5rem;
+    }
+
+    .order-summary {
+        background: var(--secondary-bg);
+        padding: var(--space-md);
+        border-radius: var(--radius-sm);
+        margin: var(--space-md) 0;
+    }
+
+    .order-summary h3 {
+        margin: 0 0 var(--space-sm) 0;
+        font-size: 1.1rem;
+    }
+
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        padding: var(--space-xs) 0;
+    }
+
+    .discount-row {
+        color: var(--success);
+    }
+
+    .total-row {
+        border-top: 2px solid var(--border-color);
+        margin-top: var(--space-xs);
+        padding-top: var(--space-sm);
+        font-size: 1.2rem;
+    }
+
+    .btn-lg {
+        padding: var(--space-md);
+        font-size: 1.1rem;
+    }
+
+    .order-item {
+        background: var(--card-bg);
+        border-radius: var(--radius-sm);
+        padding: var(--space-md);
+        margin-bottom: var(--space-sm);
+        border-left: 4px solid var(--border-color);
+    }
+
+    .order-item.status-paid {
+        border-left-color: var(--success);
+    }
+
+    .order-item.status-pending {
+        border-left-color: var(--warning);
+    }
+
+    .order-item.status-active {
+        border-left-color: var(--primary);
+    }
+
+    .order-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: var(--space-xs);
+    }
+
+    .order-status {
+        padding: var(--space-xs) var(--space-sm);
+        border-radius: var(--radius-sm);
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+
+    .status-paid {
+        background: var(--success-light);
+        color: var(--success);
+    }
+
+    .status-pending {
+        background: var(--warning-light);
+        color: var(--warning);
+    }
+
+    .status-active {
+        background: var(--primary-light);
+        color: var(--primary);
+    }
+
+    .order-details {
+        font-size: 0.9rem;
+        color: var(--text-muted);
+    }
+
+    .text-muted {
+        color: var(--text-muted);
+    }
+
+    [dir="rtl"] .payment-method-card input[type="radio"] {
+        margin-right: 0;
+        margin-left: var(--space-sm);
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let selectedPlan = null;
+    let currentPrice = 0;
+
+    function selectPlan(planId) {
+        // Remove previous selection
+        document.querySelectorAll('.plan-card').forEach(card => {
+            card.classList.remove('selected');
+        });
+
+        // Select new plan
+        const planCard = document.querySelector(`.plan-card[data-plan-id="${planId}"]`);
+        if (planCard) {
+            planCard.classList.add('selected');
+            
+            const plan = {{ pricing | tojson }}[planId];
+            selectedPlan = { id: planId, ...plan };
+            
+            document.getElementById('selectedPlanLabel').textContent = plan.label;
+            document.getElementById('selectedPlanPrice').textContent = `${plan.price} ₽`;
+            document.getElementById('selectedPlanId').value = planId;
+            
+            // Show form
+            document.getElementById('purchaseForm').style.display = 'block';
+            document.getElementById('purchaseForm').scrollIntoView({ behavior: 'smooth' });
+            
+            updatePrice();
+        }
+    }
+
+    function cancelSelection() {
+        document.getElementById('purchaseForm').style.display = 'none';
+        document.querySelectorAll('.plan-card').forEach(card => {
+            card.classList.remove('selected');
+        });
+        selectedPlan = null;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    async function updatePrice() {
+        if (!selectedPlan) return;
+
+        const promocode = document.getElementById('promocode').value.trim();
+        
+        try {
+            const formData = new FormData();
+            formData.append('plan_id', selectedPlan.id);
+            if (promocode) {
+                formData.append('promocode', promocode);
+            }
+
+            const response = await fetch('/vpn/calculate', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.error) {
+                document.getElementById('promoMessage').textContent = result.error;
+                document.getElementById('promoMessage').style.color = 'var(--error)';
+            } else {
+                document.getElementById('basePrice').textContent = `${result.base_price} ₽`;
+                
+                if (result.discount > 0) {
+                    document.getElementById('discountRow').style.display = 'flex';
+                    document.getElementById('discountAmount').textContent = `-${result.discount} ₽ (${result.discount_percent}%)`;
+                    document.getElementById('promoMessage').textContent = `Промокод "${result.promocode}" применен! Скидка ${result.discount_percent}%`;
+                    document.getElementById('promoMessage').style.color = 'var(--success)';
+                } else {
+                    document.getElementById('discountRow').style.display = 'none';
+                    if (promocode) {
+                        document.getElementById('promoMessage').textContent = 'Неверный или неактивный промокод';
+                        document.getElementById('promoMessage').style.color = 'var(--error)';
+                    } else {
+                        document.getElementById('promoMessage').textContent = '';
+                    }
+                }
+                
+                document.getElementById('finalPrice').textContent = `${result.final_price} ₽`;
+                currentPrice = result.final_price;
+            }
+        } catch (error) {
+            console.error('Error updating price:', error);
+            showToast('Ошибка при расчете цены', 'error');
+        }
+    }
+
+    async function submitOrder(event) {
+        event.preventDefault();
+
+        if (!selectedPlan) {
+            showToast('Выберите тарифный план', 'error');
+            return;
+        }
+
+        const form = event.target;
+        const formData = new FormData(form);
+
+        try {
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Обработка...';
+
+            const response = await fetch('/vpn/create_order', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                // If payment URL is provided, redirect to Platega.io
+                if (result.payment_url) {
+                    showToast(result.message, 'success');
+                    // Redirect to Platega.io payment page after short delay
+                    setTimeout(() => {
+                        window.location.href = result.payment_url;
+                    }, 1000);
+                } else {
+                    showToast(result.message || 'Заказ успешно создан', 'success');
+                    loadOrders();
+                    cancelSelection();
+                }
+            } else {
+                showToast(result.error || 'Ошибка при создании заказа', 'error');
+            }
+        } catch (error) {
+            console.error('Error creating order:', error);
+            showToast('Ошибка при создании заказа', 'error');
+        } finally {
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = false;
+            submitBtn.textContent = '💳 Купить сейчас';
+        }
+    }
+
+    async function loadOrders() {
+        try {
+            const response = await fetch('/vpn/my-orders');
+            const result = await response.json();
+
+            const ordersList = document.getElementById('ordersList');
+            
+            // Show/hide trial banner based on trial availability
+            const trialBanner = document.getElementById('trialBanner');
+            if (result.trial_available && !result.trial_used) {
+                trialBanner.style.display = 'block';
+            } else {
+                trialBanner.style.display = 'none';
+            }
+            
+            if (result.orders && result.orders.length > 0) {
+                let html = '';
+                result.orders.forEach(order => {
+                    const statusClass = `status-${order.status}`;
+                    const statusText = {
+                        'pending': 'Ожидает оплаты',
+                        'paid': 'Оплачен',
+                        'active': 'Активен',
+                        'expired': 'Истек',
+                        'cancelled': 'Отменен'
+                    }[order.status] || order.status;
+
+                    html += `
+                        <div class="order-item ${statusClass}">
+                            <div class="order-header">
+                                <strong>Заказ #${order.order_id}</strong>
+                                <span class="order-status ${statusClass}">${statusText}</span>
+                            </div>
+                            <div class="order-details">
+                                <div>Тариф: ${order.plan_label} (${order.days} дней)</div>
+                                <div>Дата: ${order.created_at.slice(0, 10)}</div>
+                                <div>Сумма: ${order.final_price} ₽</div>
+                                ${order.promocode ? `<div>Промокод: ${order.promocode}</div>` : ''}
+                                <div>Оплата: ${order.payment_method_name}</div>
+                                ${order.paid_at ? `<div>Оплачен: ${order.paid_at.slice(0, 10)}</div>` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+                ordersList.innerHTML = html;
+            } else {
+                ordersList.innerHTML = '<p class="text-muted">У вас пока нет заказов</p>';
+            }
+        } catch (error) {
+            console.error('Error loading orders:', error);
+            document.getElementById('ordersList').innerHTML = '<p class="text-muted">Ошибка загрузки истории заказов</p>';
+        }
+    }
+
+    async function activateTrial() {
+        if (!confirm('Вы уверены, что хотите активировать тестовую подписку на 3 дня? Это можно сделать только один раз.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/vpn/activate_trial', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                showToast(result.message, 'success');
+                // Hide trial banner
+                document.getElementById('trialBanner').style.display = 'none';
+                // Reload orders to show the trial order
+                loadOrders();
+                // Redirect to connections page after short delay
+                setTimeout(() => {
+                    window.location.href = '/my-connections?trial=activated';
+                }, 2000);
+            } else {
+                showToast(result.error || 'Ошибка активации тестовой подписки', 'error');
+            }
+        } catch (error) {
+            console.error('Error activating trial:', error);
+            showToast('Ошибка при активации тестовой подписки', 'error');
+        }
+    }
+
+    // Load orders on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        loadOrders();
+    });
+</script>
+{% endblock %}
