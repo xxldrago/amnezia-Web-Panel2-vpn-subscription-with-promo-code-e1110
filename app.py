@@ -4356,8 +4356,8 @@ async def api_update_user(request: Request, user_id: str, req: UpdateUserRequest
 
 @app.post('/api/users/{user_id}/delete', tags=["Users"])
 async def api_delete_user(request: Request, user_id: str):
-    cur = get_current_user(request)
-    if not cur or cur['role'] != 'admin':
+    cur = _require_admin(request)
+    if not cur:
         return JSONResponse({'error': 'Forbidden'}, status_code=403)
     lang = request.cookies.get('lang', 'ru')
     if cur['id'] == user_id:
