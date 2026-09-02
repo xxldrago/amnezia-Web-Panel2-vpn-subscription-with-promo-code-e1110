@@ -3,6 +3,8 @@ services:
     build: .
     container_name: amnezia-panel
     restart: always
+    environment:
+      SECRET_KEY: ${SECRET_KEY}
     volumes:
       - ./data.json:/app/data.json
       - ./instance:/app/instance
