@@ -22,5 +22,5 @@ ENV PANEL_DATA_FILE=/panel-data/data.json
 
 EXPOSE 5150
 
-# Запуск через gunicorn (2 воркера)
-CMD ["gunicorn", "--bind", "0.0.0.0:5150", "--workers", "2", "--threads", "2", "--timeout", "120", "store.app:create_app()"]
+# Запуск через gunicorn (1 воркер + треды — избегаем гонки create_all при старте)
+CMD ["gunicorn", "--bind", "0.0.0.0:5150", "--workers", "1", "--threads", "4", "--timeout", "120", "store.app:create_app()"]
