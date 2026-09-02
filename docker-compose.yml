@@ -49,7 +49,9 @@ services:
       - "127.0.0.1:5150:5150"
 
   bot:
-    build: ./store/bot
+    build:
+      context: ./store
+      dockerfile: bot/Dockerfile
     container_name: amnezia-store-bot
     restart: always
     depends_on:
