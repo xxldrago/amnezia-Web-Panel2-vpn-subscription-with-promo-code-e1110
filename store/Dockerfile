@@ -13,8 +13,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+# store пакет в /app/store (контекст сборки = каталог store/)
+COPY . /app/store/
 
+ENV PYTHONPATH=/app
 # Монтируем общий data.json панели (доступ только на чтение для модулей)
 ENV PANEL_DATA_FILE=/panel-data/data.json
 
