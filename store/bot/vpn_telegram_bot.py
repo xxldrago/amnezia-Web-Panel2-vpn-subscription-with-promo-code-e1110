@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 
 from store.app import create_app, db
@@ -70,13 +71,21 @@ async def start(message: Message):
     )
 
 
+async def _safe_edit(message, text, **kwargs):
+    """Edit message, ignoring 'message is not modified' Telegram errors."""
+    try:
+        await message.edit_text(text, **kwargs)
+    except TelegramBadRequest:
+        pass
+
+
 async def cb_menu(query: CallbackQuery):
-    await query.message.edit_text("👋 Главное меню:", reply_markup=_menu())
+    await _safe_edit(query.message,"👋 Главное меню:", reply_markup=_menu())
     await query.answer()
 
 
 async def cb_buy(query: CallbackQuery):
-    await query.message.edit_text("Выберите тариф:", reply_markup=_pricing_kb())
+    await _safe_edit(query.message,"Выберите тариф:", reply_markup=_pricing_kb())
     await query.answer()
 
 
@@ -84,7 +93,7 @@ async def cb_plan(query: CallbackQuery):
     plan_id = query.data.split(":", 1)[1]
     user = _user_by_telegram_id(query.from_user.id)
     if not user:
-        await query.message.edit_text(
+        await _safe_edit(query.message,
             "❌ Пользователь не привязан к панели. Зарегистрируйтесь на сайте.",
             reply_markup=_menu())
         await query.answer()
@@ -129,7 +138,7 @@ async def cb_plan(query: CallbackQuery):
         order_id = order.order_id
         pay_url = pay.get('payment_url', '')
 
-    await query.message.edit_text(
+    await _safe_edit(query.message,
         f"✅ Вы выбрали: {plan['label']} — {plan['price']}₽\n"
         f"Заказ: `{order_id}`\n\n"
         f"Оплата: {pay_url}\n\n"
@@ -142,7 +151,7 @@ async def cb_plan(query: CallbackQuery):
 async def cb_trial(query: CallbackQuery):
     user = _user_by_telegram_id(query.from_user.id)
     if not user:
-        await query.message.edit_text("❌ Пользователь не привязан к панели.", reply_markup=_menu())
+        await _safe_edit(query.message,"❌ Пользователь не привязан к панели.", reply_markup=_menu())
         await query.answer()
         return
     from store.modules import vpn_provision
@@ -150,14 +159,14 @@ async def cb_trial(query: CallbackQuery):
         res = vpn_provision.activate_trial_and_provision(user['id'], user.get('username', ''))
     msg = ("✅ Тестовая подписка на 3 дня активирована!" if res.get('success')
            else f"⚠️ {res.get('error', 'Ошибка активации')}")
-    await query.message.edit_text(msg, reply_markup=_menu())
+    await _safe_edit(query.message,msg, reply_markup=_menu())
     await query.answer()
 
 
 async def cb_orders(query: CallbackQuery):
     user = _user_by_telegram_id(query.from_user.id)
     if not user:
-        await query.message.edit_text("❌ Пользователь не привязан к панели.", reply_markup=_menu())
+        await _safe_edit(query.message,"❌ Пользователь не привязан к панели.", reply_markup=_menu())
         await query.answer()
         return
     with _app.app_context():
@@ -168,14 +177,14 @@ async def cb_orders(query: CallbackQuery):
         text = "У вас пока нет заказов."
     else:
         text = "\n".join(f"{o.plan_label} — {o.status} ({o.final_price}₽)" for o in orders)
-    await query.message.edit_text(f"📋 Ваши заказы:\n{text}", reply_markup=_menu())
+    await _safe_edit(query.message,f"📋 Ваши заказы:\n{text}", reply_markup=_menu())
     await query.answer()
 
 
 async def cb_referral(query: CallbackQuery):
     user = _user_by_telegram_id(query.from_user.id)
     if not user:
-        await query.message.edit_text("❌ Пользователь не привязан к панели.", reply_markup=_menu())
+        await _safe_edit(query.message,"❌ Пользователь не привязан к панели.", reply_markup=_menu())
         await query.answer()
         return
     from store.modules.referral_system import ensure_referral_user
@@ -184,7 +193,7 @@ async def cb_referral(query: CallbackQuery):
     with _app.app_context():
         site = sm.get_site_url()
     link = f"{site}/store/referral?invite={ru.referral_code}"
-    await query.message.edit_text(
+    await _safe_edit(query.message,
         f"🎁 Ваша реферальная ссылка:\n`{link}`\nКод: `{ru.referral_code}`",
         reply_markup=_menu(),
     )
@@ -192,7 +201,7 @@ async def cb_referral(query: CallbackQuery):
 
 
 async def cb_support(query: CallbackQuery):
-    await query.message.edit_text(
+    await _safe_edit(query.message,
         "🎫 Для создания тикета напишите сообщение в формате:\n"
         "`тикет Тема | текст`\n\n"
         "Пример: `тикет Проблема с подключением | Не работает конфиг`",
