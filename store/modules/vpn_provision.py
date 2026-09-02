@@ -47,7 +47,7 @@ def create_connection_on_server(user_id: str, server: Dict[str, Any]) -> Optiona
     # Ищем установленный протокол среди protocols сервера
     protocols = server.get('protocols', {})
     for proto_key, rec in protocols.items():
-        if rec and rec.get('installed') and proto_key in ('awg', 'wireguard', 'xray', 'telemt', 'socks5'):
+        if rec and rec.get('installed') and proto_key in ('awg', 'awg3', 'wireguard', 'xray', 'telemt', 'socks5'):
             protocol = proto_key
             break
     if not protocol:
