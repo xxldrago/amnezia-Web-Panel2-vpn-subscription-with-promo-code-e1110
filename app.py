@@ -1886,7 +1886,7 @@ def static_version():
 
 def tpl(request, template, **kwargs):
     data = load_data()
-    lang = request.cookies.get('lang', 'en')
+    lang = 'ru'
     ctx = {
         'request': request,
         'static_v': static_version(),
@@ -2726,6 +2726,28 @@ def _check_admin(request):
                 logger.warning(f"Failed to touch API token last_used_at: {e}")
             return token_user
 
+    return None
+
+
+def _require_admin(request):
+    """Authorize an action strictly as admin (session cookie OR Bearer token)."""
+    user = get_current_user(request)
+    if user and user['role'] == 'admin':
+        return user
+    auth_header = request.headers.get('Authorization', '')
+    if auth_header.lower().startswith('bearer '):
+        raw_token = auth_header[7:].strip()
+        data = load_data()
+        resolved = _resolve_api_token(data, raw_token)
+        if resolved:
+            entry, token_user = resolved
+            if token_user.get('role') == 'admin':
+                try:
+                    if _touch_api_token(entry):
+                        save_data(data)
+                except Exception as e:
+                    logger.warning(f"Failed to touch API token last_used_at: {e}")
+                return token_user
     return None
 
 
@@ -4198,8 +4220,8 @@ async def api_list_users(request: Request, search: str = '', page: int = 1, size
 
 @app.post('/api/users/add', tags=["Users"])
 async def api_add_user(request: Request, req: AddUserRequest):
-    cur = get_current_user(request)
-    if not cur or cur['role'] != 'admin':
+    cur = _require_admin(request)
+    if not cur:
         return JSONResponse({'error': 'Forbidden'}, status_code=403)
     try:
         data = load_data()

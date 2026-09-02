@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Восстановление пароля{% endblock %}
+{% block content %}
+<div class="card" style="max-width:420px;margin:40px auto;">
+  <h1>Восстановление пароля</h1>
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  {% if flash %}<p class="success">{{ flash }}</p>{% endif %}
+  <p class="muted">Введите ваш логин. Код для восстановления будет отправлен в ваш Telegram (нужна привязка).</p>
+  <form method="post" action="/store/auth/forgot">
+    <label>Логин</label>
+    <input name="username" required autofocus>
+    <button class="btn" type="submit" style="width:100%;margin-top:10px">Получить код</button>
+  </form>
+  <p style="margin-top:10px"><a href="/store/auth/login">Вернуться ко входу</a></p>
+</div>
+{% endblock %}

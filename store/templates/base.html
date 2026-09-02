@@ -40,6 +40,10 @@
     <span style="flex:1"></span>
     {% if user %}
       <span class="muted">{{ user.username }}</span>
+      <a href="/store/auth/logout">Выйти</a>
+    {% else %}
+      <a href="/store/auth/login">Вход</a>
+      <a href="/store/auth/register">Регистрация</a>
     {% endif %}
   </div>
   <div class="wrap">

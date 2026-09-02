@@ -62,3 +62,16 @@ def get_panel_user_id(cookie_header: str = '', secret_key: Optional[str] = None)
     """Извлекает user_id из cookie `session` (если пользователь вошёл в панель)."""
     session = decode_session_cookie(cookie_header, secret_key)
     return session.get('user_id')
+
+
+def create_session_cookie(user_id: str, secret_key: Optional[str] = None) -> str:
+    """Сегенерирует валидный cookie-значение сессии панели (Dictionary {'user_id': ...}).
+
+    Используется для «входа через Telegram»: store сам создаёт тот же Starlette cookie,
+    который панель примет как авторизацию данного пользователя (общий SECRET_KEY).
+    """
+    secret_key = secret_key or os.environ.get('SECRET_KEY', '')
+    if not secret_key:
+        return ''
+    serializer = _get_serializer(secret_key)
+    return serializer.dumps({'user_id': user_id})

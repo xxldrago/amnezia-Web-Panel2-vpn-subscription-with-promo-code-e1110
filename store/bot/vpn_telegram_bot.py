@@ -46,6 +46,8 @@ def _menu():
         [InlineKeyboardButton(text="📋 Мои заказы", callback_data="orders")],
         [InlineKeyboardButton(text="🎁 Рефералка", callback_data="referral")],
         [InlineKeyboardButton(text="🎫 Поддержка", callback_data="support")],
+        [InlineKeyboardButton(text="🔑 Войти на сайт", callback_data="tg_login")],
+        [InlineKeyboardButton(text="🔗 Привязать Telegram", callback_data="tg_bind")],
     ])
 
 
@@ -210,6 +212,87 @@ async def cb_support(query: CallbackQuery):
     await query.answer()
 
 
+async def cb_tg_login(query: CallbackQuery):
+    """Генерирует код для входа на сайт (нужен привязанный Telegram)."""
+    user = _user_by_telegram_id(query.from_user.id)
+    if not user:
+        await _safe_edit(query.message,
+            "❌ Telegram ещё не привязан к аккаунту.\n"
+            "1. Войдите на сайт и нажмите «Привязать Telegram» (или зарегистрируйтесь).\n"
+            "2. Вернитесь сюда и нажмите «🔗 Привязать Telegram».",
+            reply_markup=_menu())
+        await query.answer()
+        return
+    from store.modules import auth as auth_mod
+    with _app.app_context():
+        code = auth_mod.generate_tg_code(str(query.from_user.id), 'tg_login', user_id=user['id'])
+    await _safe_edit(query.message,
+        f"🔑 Ваш код для входа на сайт:\n\n`{code}`\n\n"
+        "Откройте panel.3set.online → Вход через Telegram и введите этот код.",
+        reply_markup=_menu())
+    await query.answer()
+
+
+async def cb_tg_bind(query: CallbackQuery):
+    """Генерирует код для привязки Telegram к аккаунту на сайте."""
+    # Проверяем, не привязан ли этот telegram уже к панельному юзеру
+    user = _user_by_telegram_id(query.from_user.id)
+    from store.modules import auth as auth_mod
+    with _app.app_context():
+        code = auth_mod.generate_tg_code(str(query.from_user.id), 'tg_bind')
+    if user:
+        # Telegram уже привязан → это дублирующая привязка (к тому же аккаунту)
+        await _safe_edit(query.message,
+            f"ℹ️ Ваш Telegram уже привязан к аккаунту `{user.get('username')}`.\n\n"
+            "Если нужно перепривязать, зайдите на сайт → «Привязать Telegram» и введите код:\n\n"
+            f"`{code}`",
+            reply_markup=_menu())
+    else:
+        await _safe_edit(query.message,
+            f"🔗 Ваш код для привязки Telegram:\n\n`{code}`\n\n"
+            "Зайдите на сайт (войдите в аккаунт) → раздел «Привязать Telegram» "
+            "и введите этот код, чтобы привязать аккаунт к вашему Telegram.",
+            reply_markup=_menu())
+    await query.answer()
+
+
+async def handle_register_msg(message: Message):
+    """Регистрация из бота: `регистрация логин пароль` (email необязателен)."""
+    text = (message.text or "").strip()
+    if not text.lower().startswith("регистрация"):
+        return False  # не наша команда
+
+    parts = text.split(None, 2)
+    if len(parts) < 3:
+        await message.answer(
+            "Неверный формат. Используйте:\n`регистрация логин пароль`\n"
+            "Пример: `регистрация ivanov secret123`")
+        return True
+
+    username = parts[1]
+    password = parts[2]
+    if len(username) < 3 or len(password) < 6:
+        await message.answer("Логин (мин. 3 символа) и пароль (мин. 6 символов) слишком короткие.")
+        return True
+
+    from store.modules import auth as auth_mod
+    with _app.app_context():
+        res = auth_mod.create_panel_user(username, password, '', str(message.from_user.id))
+
+    if not res['success']:
+        msg = ('Такой логин уже занят.' if 'user_exists' in str(res.get('error'))
+               else res.get('error', 'Ошибка регистрации'))
+        await message.answer(f"❌ {msg}")
+        return True
+
+    await message.answer(
+        f"✅ Аккаунт `{username}` создан и Telegram привязан!\n\n"
+        "Теперь вы можете покупать VPN и пользоваться меню. "
+        "Для авторизации на сайте используйте вход через Telegram (кнопка «🔑 Войти на сайт»).",
+        reply_markup=_menu())
+    return True
+
+
 async def handle_ticket_msg(message: Message):
     text = (message.text or "").strip()
     if text.lower().startswith("тикет") and "|" in text:
@@ -250,6 +333,7 @@ async def main():
     dp = Dispatcher()
 
     dp.message.register(start, CommandStart())
+    dp.message.register(handle_register_msg, F.text.casefold().startswith("регистрация"))
     dp.message.register(handle_ticket_msg)
     dp.callback_query.register(cb_menu, F.data == "menu")
     dp.callback_query.register(cb_buy, F.data == "buy")
@@ -258,6 +342,8 @@ async def main():
     dp.callback_query.register(cb_orders, F.data == "orders")
     dp.callback_query.register(cb_referral, F.data == "referral")
     dp.callback_query.register(cb_support, F.data == "support")
+    dp.callback_query.register(cb_tg_login, F.data == "tg_login")
+    dp.callback_query.register(cb_tg_bind, F.data == "tg_bind")
 
     logger.info("Telegram-бот store запущен")
     await dp.start_polling(bot)

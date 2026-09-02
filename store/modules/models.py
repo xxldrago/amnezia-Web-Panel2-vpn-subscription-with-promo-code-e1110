@@ -149,3 +149,16 @@ class TrialSubscription(db.Model):
     activated_at = Column(DateTime, default=datetime.utcnow)
     expires_at = Column(DateTime)
     days = Column(Integer, default=3)
+
+
+class LoginCode(db.Model):
+    """Одноразовые коды для восстановления пароля и входа через Telegram."""
+    __tablename__ = 'login_codes'
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(String(64), index=True, nullable=True, default='')
+    telegram_id = Column(String(32), nullable=True, default='')
+    code = Column(String(12), index=True, nullable=False)
+    code_type = Column(String(20), default='reset')  # reset / tg_login / tg_bind
+    used = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)

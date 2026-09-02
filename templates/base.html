@@ -54,11 +54,6 @@
             </nav>
 
             <div class="nav-user">
-                <button class="theme-toggle" onclick="openModal('langModal')" title="{{ _('select_lang') }}"
-                    style="margin-right: var(--space-sm);">
-                    {% if lang == 'ru' %}🇷🇺{% elif lang == 'fr' %}🇫🇷{% elif lang == 'zh' %}🇨🇳{% elif lang == 'fa'
-                    %}🇮🇷{% else %}🇺🇸{% endif %}
-                </button>
                 <button class="theme-toggle" onclick="toggleTheme()" title="{{ _('toggle_theme') }}"
                     id="themeToggle">🌙</button>
                 <span class="nav-username">{{ current_user.username }}</span>
@@ -71,11 +66,6 @@
             </div>
             {% else %}
             <div class="nav-user">
-                <button class="theme-toggle" onclick="openModal('langModal')" title="{{ _('select_lang') }}"
-                    style="margin-right: var(--space-sm);">
-                    {% if lang == 'ru' %}🇷🇺{% elif lang == 'fr' %}🇫🇷{% elif lang == 'zh' %}🇨🇳{% elif lang == 'fa'
-                    %}🇮🇷{% else %}🇺🇸{% endif %}
-                </button>
                 <button class="theme-toggle" onclick="toggleTheme()" title="{{ _('toggle_theme') }}"
                     id="themeToggle">🌙</button>
             </div>
@@ -85,35 +75,6 @@
         <main>
             {% block content %}{% endblock %}
         </main>
-    </div>
-
-    <!-- ===== Language Modal ===== -->
-    <div class="modal-backdrop" id="langModal">
-        <div class="modal" style="max-width: 320px;">
-            <div class="modal-header">
-                <h2 class="modal-title">{{ _('select_lang') }}</h2>
-                <button class="modal-close" onclick="closeModal('langModal')">×</button>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: var(--space-sm);">
-                {% set langs = [
-                ('en', '🇺🇸', 'lang_en'),
-                ('ru', '🇷🇺', 'lang_ru'),
-                ('fr', '🇫🇷', 'lang_fr'),
-                ('zh', '🇨🇳', 'lang_zh'),
-                ('fa', '🇮🇷', 'lang_fa')
-                ] %}
-                {% for l_code, l_flag, l_key in langs %}
-                <a href="/set_lang/{{ l_code }}" class="btn btn-secondary"
-                    style="justify-content: flex-start; gap: var(--space-md); padding: var(--space-md);">
-                    <span style="font-size: 1.4rem;">{{ l_flag }}</span>
-                    <span style="font-weight: 500;">{{ _(l_key) }}</span>
-                    {% if lang == l_code %}
-                    <span class="lang-check">✓</span>
-                    {% endif %}
-                </a>
-                {% endfor %}
-            </div>
-        </div>
     </div>
 
     <script>
@@ -128,10 +89,7 @@
             const updateUI = () => {
                 const isLight = document.documentElement.getAttribute('data-theme') === 'light';
                 document.querySelectorAll('.theme-toggle').forEach(btn => {
-                    const isLang = btn.getAttribute('onclick').includes('langModal');
-                    if (!isLang) {
-                        btn.textContent = isLight ? '☀️' : '🌙';
-                    }
+                    btn.textContent = isLight ? '☀️' : '🌙';
                 });
             };
 

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Новый пароль{% endblock %}
+{% block content %}
+<div class="card" style="max-width:420px;margin:40px auto;">
+  <h1>Новый пароль</h1>
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  {% if flash %}<p class="success">{{ flash }}</p>{% endif %}
+  <form method="post" action="/store/auth/reset">
+    <input type="hidden" name="username" value="{{ username }}">
+    <label>Код из Telegram</label>
+    <input name="code" required autofocus>
+    <label>Новый пароль</label>
+    <input name="password" type="password" required minlength="6">
+    <label>Повторите пароль</label>
+    <input name="password2" type="password" required minlength="6">
+    <button class="btn" type="submit" style="width:100%;margin-top:10px">Сменить пароль</button>
+  </form>
+</div>
+{% endblock %}

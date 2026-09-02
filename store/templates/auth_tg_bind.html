@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Привязка Telegram{% endblock %}
+{% block content %}
+<div class="card" style="max-width:460px;margin:40px auto;">
+  <h1>Привязка Telegram</h1>
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  {% if flash %}<p class="success">{{ flash }}</p>{% endif %}
+  <p>Вы вошли как <b>{{ user.username }}</b>.</p>
+  <p class="muted">
+    Чтобы восстановить пароль и входить через бота, привяжите ваш Telegram.
+    Откройте <b>@threeSet_bot</b>, нажмите <b>«🔗 Привязать Telegram»</b> и следуйте инструкции —
+    вы получите код, который нужно ввести здесь.
+  </p>
+  <form method="post" action="/store/auth/tg-bind">
+    <label>Код из бота</label>
+    <input name="code" required autofocus>
+    <button class="btn" type="submit" style="width:100%;margin-top:10px">Привязать</button>
+  </form>
+  <p style="margin-top:10px">
+    <a href="/store/vpn/purchase">Пропустить и перейти в магазин</a>
+  </p>
+</div>
+{% endblock %}

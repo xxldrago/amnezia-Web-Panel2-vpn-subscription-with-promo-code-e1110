@@ -41,6 +41,7 @@ def create_app():
         from store.modules.referral_system import setup_referral
         from store.modules.vpn_purchase import setup_purchase
         from store.modules.support_tickets import setup_tickets
+        from store.modules.auth import setup_auth
 
         # Создаём таблицы (модели регистрируются при импорте модулей)
         db.create_all()
@@ -50,6 +51,7 @@ def create_app():
         setup_referral(app)
         setup_purchase(app)
         setup_tickets(app)
+        setup_auth(app)
 
         logger.info("Store: все модули инициализированы")
 
