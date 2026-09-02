@@ -1,39 +1,28 @@
 """Расшифровка Starlette-сессии (SessionMiddleware) из общего cookie `session`.
 
-Amnezia Web Panel использует Starlette SessionMiddleware, который сериализует
-словарь сессии через itsdangerous.URLSafeSerializer в cookie `session`.
+Amnezia Web Panel использует Starlette SessionMiddleware. Начиная со Starlette,
+SessionMiddleware хранит сессию как TimestampSigner(secret).sign(b64encode(json(dict))).
 Панель кладёт в сессию ключ `user_id`.
 
 Чтобы Flask-система (store) видела того же пользователя без изменения панели,
-мы расшифровываем ту же cookie, используя тот же SECRET_KEY. Для этого SECRET_KEY
-должен быть одинаковым в .env панели и store.
+мы расшифровываем и генерируем ту же cookie, используя тот же SECRET_KEY.
+Для этого SECRET_KEY должен быть одинаковым в .env панели и store.
 """
-import hashlib
+import base64
+import json
 import logging
 import os
 from typing import Optional
 
-try:
-    from itsdangerous import URLSafeSerializer, BadSignature, SignatureExpired
-except ImportError:  # pragma: no cover
-    from itsdangerous import URLSafeSerializer
-    BadSignature = Exception
-    SignatureExpired = Exception
+from itsdangerous import TimestampSigner, BadSignature, SignatureExpired
 
 logger = logging.getLogger(__name__)
 
+SESSION_MAX_AGE = 14 * 24 * 60 * 60  # 14 дней (совпадает с панелью)
 
-def _get_serializer(secret_key: str):
-    """Создаёт такой же URLSafeSerializer, какой использует Starlette SessionMiddleware."""
-    return URLSafeSerializer(
-        secret_key,
-        salt='cookie-session',
-        serializer=None,               # стандартный defaults
-        signer_kwargs={
-            'key_derivation': 'hmac',
-            'digest_method': hashlib.sha1,
-        },
-    )
+
+def _get_signer(secret_key: str) -> TimestampSigner:
+    return TimestampSigner(secret_key)
 
 
 def decode_session_cookie(cookie_value: str, secret_key: Optional[str] = None) -> dict:
@@ -45,8 +34,9 @@ def decode_session_cookie(cookie_value: str, secret_key: Optional[str] = None) -
         logger.warning("SECRET_KEY не задан — невозможно прочитать сессию панели.")
         return {}
     try:
-        serializer = _get_serializer(secret_key)
-        return serializer.loads(cookie_value, max_age=60 * 60 * 24 * 14)
+        signer = _get_signer(secret_key)
+        data = signer.unsign(cookie_value.encode('utf-8'), max_age=SESSION_MAX_AGE)
+        return json.loads(base64.b64decode(data))
     except SignatureExpired:
         logger.info("Сессия пользователя истекла.")
         return {}
@@ -65,7 +55,7 @@ def get_panel_user_id(cookie_header: str = '', secret_key: Optional[str] = None)
 
 
 def create_session_cookie(user_id: str, secret_key: Optional[str] = None) -> str:
-    """Сегенерирует валидный cookie-значение сессии панели (Dictionary {'user_id': ...}).
+    """Генерирует валидную cookie-сессию панели для user_id.
 
     Используется для «входа через Telegram»: store сам создаёт тот же Starlette cookie,
     который панель примет как авторизацию данного пользователя (общий SECRET_KEY).
@@ -73,5 +63,6 @@ def create_session_cookie(user_id: str, secret_key: Optional[str] = None) -> str
     secret_key = secret_key or os.environ.get('SECRET_KEY', '')
     if not secret_key:
         return ''
-    serializer = _get_serializer(secret_key)
-    return serializer.dumps({'user_id': user_id})
+    data = base64.b64encode(json.dumps({'user_id': user_id}).encode('utf-8'))
+    signer = _get_signer(secret_key)
+    return signer.sign(data).decode('utf-8')
