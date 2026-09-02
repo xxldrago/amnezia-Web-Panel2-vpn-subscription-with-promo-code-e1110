@@ -15,6 +15,7 @@ RUN pip install --no-cache-dir -r requirements-panel.txt
 
 # Копирование кода панели
 COPY app.py .
+COPY connection_service.py .
 COPY managers/ managers/
 COPY telegram_bot.py .
 COPY templates/ templates/
