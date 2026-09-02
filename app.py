@@ -222,7 +222,20 @@ def save_data(data):
             json.dump(data, f, indent=2, ensure_ascii=False)
             f.flush()
             os.fsync(f.fileno())
-        os.replace(tmp_path, DATA_FILE)
+        try:
+            os.replace(tmp_path, DATA_FILE)
+        except OSError:
+            # Atomic replace fails on bind-mounted files (EBUSY). Fall back to
+            # writing in place so bind-mount volumes keep working.
+            payload = json.dumps(data, indent=2, ensure_ascii=False)
+            with open(DATA_FILE, 'w', encoding='utf-8') as f:
+                f.write(payload)
+                f.flush()
+                os.fsync(f.fileno())
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
     except Exception:
         try:
             os.unlink(tmp_path)
