@@ -3,30 +3,29 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Установка системных зависимостей
-RUN apt-get update && apt-get install -y \
-    gcc \
-    postgresql-client \
-    libpq-dev \
-    curl \
+# Системные зависимости для SSH (paramiko) и работы с сертификатами
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    openssh-client \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Копирование requirements и установка пакетов
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Зависимости только самой Amnezia Web Panel (FastAPI/uvicorn)
+COPY requirements-panel.txt .
+RUN pip install --no-cache-dir -r requirements-panel.txt
 
-# Копирование всего кода
-COPY . .
+# Копирование кода панели
+COPY app.py .
+COPY managers/ managers/
+COPY telegram_bot.py .
+COPY templates/ templates/
+COPY static/ static/
+COPY translations/ translations/
+COPY protocol_telemt/ protocol_telemt/
 
-# Создаем директории для данных
+# Директории для данных
 RUN mkdir -p data instance logs
 
-# !!! ВАЖНО: Запускаем скрипт интеграции перед стартом сервера !!!
-# Он автоматически пропатчит app.py, добавив все модули
-RUN python auto_integrate.py
-
-# Экспортируем порт
 EXPOSE 5000
 
-# Запуск через Gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--threads", "2", "app:app"]
+# Панель сама запускает uvicorn (учитывает собственный SSL в настройках panel)
+CMD ["python", "app.py"]

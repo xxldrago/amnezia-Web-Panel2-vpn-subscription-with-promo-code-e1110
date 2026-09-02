@@ -32,11 +32,11 @@ except ImportError as e:
         # Вставляем после основных импортов Flask
         content = content.replace("from flask import Flask", f"from flask import Flask\n{imports_block}")
         changes_made = True
-print("✅ Импорты модулей добавлены.")
+        print("✅ Импорты модулей добавлены.")
 
-# 2. Добавляем инициализацию в блок создания app
-# Ищем место после app = Flask(__name__)
-init_block = """
+    # 2. Добавляем инициализацию в блок создания app
+    # Ищем место после app = Flask(__name__)
+    init_block = """
     # Auto-initialization of modules
     if MODULES_ENABLED:
         try:
@@ -53,24 +53,24 @@ init_block = """
             print(f"❌ Error starting modules: {e}")
 """
 
-# Простая эвристика: ищем app = Flask(__name__) и добавляем код после него с отступом
-if "if MODULES_ENABLED:" not in content:
-    pattern = r"(app = Flask\(__name__\))"
-    match = re.search(pattern, content)
-    if match:
-        insert_pos = match.end()
-        # Находим конец строки
-        newline_pos = content.find('\n', insert_pos)
-        content = content[:newline_pos+1] + "    " + init_block.strip().replace('\n', '\n    ') + "\n" + content[newline_pos+1:]
-        changes_made = True
-        print("✅ Инициализация модулей добавлена в app.py.")
+    # Простая эвристика: ищем app = Flask(__name__) и добавляем код после него с отступом
+    if "if MODULES_ENABLED:" not in content:
+        pattern = r"(app = Flask\(__name__\))"
+        match = re.search(pattern, content)
+        if match:
+            insert_pos = match.end()
+            # Находим конец строки
+            newline_pos = content.find('\n', insert_pos)
+            content = content[:newline_pos+1] + "    " + init_block.strip().replace('\n', '\n    ') + "\n" + content[newline_pos+1:]
+            changes_made = True
+            print("✅ Инициализация модулей добавлена в app.py.")
 
-if changes_made:
-    with open(app_path, 'w', encoding='utf-8') as f:
-        f.write(content)
-    print("💾 Файл app.py обновлен и готов к запуску со всеми модулями.")
-else:
-    print("ℹ️ Файл app.py уже содержит интеграцию модулей.")
+    if changes_made:
+        with open(app_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        print("💾 Файл app.py обновлен и готов к запуску со всеми модулями.")
+    else:
+        print("ℹ️ Файл app.py уже содержит интеграцию модулей.")
 
 if __name__ == "__main__":
     integrate_modules()

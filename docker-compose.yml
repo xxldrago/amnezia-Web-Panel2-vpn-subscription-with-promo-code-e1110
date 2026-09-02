@@ -1,61 +1,13 @@
-version: '3.8' # Убрали предупреждение, хотя compose игнорирует это поле в новых версиях, лучше оставить для совместимости или убрать совсем
-
 services:
-  db:
-    image: postgres:15-alpine
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-vpnuser}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vpnpassword}
-      POSTGRES_DB: ${POSTGRES_DB:-vpndb}
-    networks:
-      - vpn-network
-
-  redis:
-    image: redis:alpine
-    networks:
-      - vpn-network
-
-  web:
+  panel:
     build: .
+    container_name: amnezia-panel
     restart: always
-    env_file: .env
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-vpnuser}:${POSTGRES_PASSWORD:-vpnpassword}@db/${POSTGRES_DB:-vpndb}
-      REDIS_URL: redis://redis:6379/0
-      DOMAIN: ${DOMAIN}
-    depends_on:
-      - db
-      - redis
     volumes:
-      - ./data:/app/data
+      - ./data.json:/app/data.json
       - ./instance:/app/instance
-      - letsencrypt_certs:/etc/letsencrypt
-    networks:
-      - vpn-network
-
-  nginx:
-    image: nginx:alpine
-    restart: always
+      - ./logs:/app/logs
+      - ./tunnels_state.json:/app/tunnels_state.json
     ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - letsencrypt_certs:/etc/letsencrypt
-      - ./html:/usr/share/nginx/html
-    depends_on:
-      - web
-    networks:
-      - vpn-network
-    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
-
-volumes:
-  postgres_data:
-  letsencrypt_certs:
-  html:
-
-networks:
-  vpn-network:
-    driver: bridge
+      # nginx на хосте проксирует на 127.0.0.1:5000
+      - "127.0.0.1:5000:5000"

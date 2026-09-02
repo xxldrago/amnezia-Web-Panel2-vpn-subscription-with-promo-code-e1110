@@ -77,9 +77,6 @@ wheels/
 *.sublime-project
 *.sublime-workspace
 
-# Docker
-.dockerignore
-
 # Temporary files
 *.tmp
 *.temp
