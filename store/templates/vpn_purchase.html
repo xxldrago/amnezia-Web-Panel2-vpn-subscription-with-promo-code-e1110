@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Купить VPN{% endblock %}
+{% block content %}
+<h1>Выберите тариф</h1>
+<div class="grid">
+  {% for plan_id, plan in pricing.items() %}
+  <div class="card">
+    <h3>{{ plan.label }}</h3>
+    <div class="muted">{{ plan.days }} дней</div>
+    <div class="price">{{ plan.price }} ₽</div>
+    <button class="btn" data-plan="{{ plan_id }}" data-price="{{ plan.price }}"
+            onclick="selectPlan('{{ plan_id }}','{{ plan.label }}')">Купить</button>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="card" id="checkout" style="display:none">
+  <h3>Оформление заказа</h3>
+  <p id="selected">—</p>
+  <label>Промокод</label>
+  <input id="promo" placeholder="WELCOME10">
+  <button class="btn secondary" onclick="applyPromo()">Применить</button>
+  <p id="priceInfo"></p>
+  <button class="btn" onclick="buy()">Перейти к оплате</button>
+  <p id="msg" class="muted"></p>
+</div>
+
+<script>
+let currentPlan = null;
+
+function selectPlan(id, label){
+  currentPlan = id;
+  document.getElementById('selected').textContent = label;
+  document.getElementById('checkout').style.display = 'block';
+  document.getElementById('priceInfo').textContent = '';
+  document.getElementById('msg').textContent = '';
+}
+
+async function applyPromo(){
+  if(!currentPlan) return;
+  const r = await fetch('/store/vpn/calculate', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({plan_id: currentPlan, promocode: document.getElementById('promo').value})
+  });
+  const d = await r.json();
+  if(d.error){ document.getElementById('priceInfo').textContent = d.error; return; }
+  document.getElementById('priceInfo').innerHTML =
+    (d.discount ? `Скидка: -${d.discount} ₽ (${d.discount_percent}%)<br>` : '') +
+    `<b>Итого: ${d.final_price} ₽</b>`;
+}
+
+async function buy(){
+  if(!currentPlan) return;
+  const r = await fetch('/store/vpn/create_order', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({plan_id: currentPlan, promocode: document.getElementById('promo').value})
+  });
+  const d = await r.json();
+  if(d.error){ document.getElementById('msg').textContent = d.error; document.getElementById('msg').classList.add('error'); return; }
+  if(d.payment_url){ window.location.href = d.payment_url; }
+  else { document.getElementById('msg').textContent = d.status; }
+}
+</script>
+{% endblock %}

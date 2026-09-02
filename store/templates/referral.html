@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Реферальная программа{% endblock %}
+{% block content %}
+<h1>Реферальная программа</h1>
+<div class="card">
+  <h3>Ваш реферальный код</h3>
+  <p style="font-size:32px; letter-spacing:6px">{{ code }}</p>
+  <p class="muted">{{ share_url }}</p>
+  <button class="btn" onclick="copy()">Скопировать ссылку</button>
+</div>
+
+<div class="card">
+  <h3>Статистика</h3>
+  <div class="grid">
+    <div>Приглашено: <b>{{ stats.invited }}</b></div>
+    <div>Сделали первый депозит: <b>{{ stats.first_deposit }}</b></div>
+    <div>Заработано: <b>{{ stats.total_earned }} ₽</b></div>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Условия</h3>
+  <ul>
+    <li>Приглашённый получает <b>100 ₽</b> бонуса при первом пополнении от 100 ₽</li>
+    <li>Вы получаете <b>100 ₽</b> за первого реферала</li>
+    <li><b>25%</b> комиссии с последующих пополнений ваших рефералов</li>
+  </ul>
+</div>
+
+<script>
+function copy(){ navigator.clipboard.writeText('{{ share_url }}').then(()=>alert('Ссылка скопирована!')); }
+</script>
+{% endblock %}

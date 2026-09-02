@@ -9,5 +9,62 @@ services:
       - ./logs:/app/logs
       - ./tunnels_state.json:/app/tunnels_state.json
     ports:
-      # nginx на хосте проксирует на 127.0.0.1:5000
       - "127.0.0.1:5000:5000"
+
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: storeuser
+      POSTGRES_PASSWORD: ${STORE_DB_PASSWORD:-storepass}
+      POSTGRES_DB: storedb
+    volumes:
+      - store_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U storeuser -d storedb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  store:
+    build: ./store
+    container_name: amnezia-store
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SECRET_KEY: ${SECRET_KEY}
+      STORE_DATABASE_URI: postgresql://storeuser:${STORE_DB_PASSWORD:-storepass}@db:5432/storedb
+      PANEL_API_BASE: http://panel:5000
+      PANEL_API_TOKEN: ${PANEL_API_TOKEN}
+      PANEL_DATA_FILE: /panel-data/data.json
+      SITE_URL: https://panel.3set.online
+      PLATEGA_MERCHANT_ID: ${PLATEGA_MERCHANT_ID}
+      PLATEGA_SECRET_KEY: ${PLATEGA_SECRET_KEY}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+    volumes:
+      - ./data.json:/panel-data/data.json:ro
+    ports:
+      - "127.0.0.1:5150:5150"
+
+  bot:
+    build: ./store/bot
+    container_name: amnezia-store-bot
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SECRET_KEY: ${SECRET_KEY}
+      STORE_DATABASE_URI: postgresql://storeuser:${STORE_DB_PASSWORD:-storepass}@db:5432/storedb
+      PANEL_API_BASE: http://panel:5000
+      PANEL_API_TOKEN: ${PANEL_API_TOKEN}
+      PANEL_DATA_FILE: /panel-data/data.json
+      SITE_URL: https://panel.3set.online
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+    volumes:
+      - ./data.json:/panel-data/data.json:ro
+
+volumes:
+  store_pg_data:

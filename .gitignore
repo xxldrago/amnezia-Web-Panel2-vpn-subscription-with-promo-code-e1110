@@ -1,4 +1,3 @@
-```
 # Python
 __pycache__/
 *.pyc
@@ -16,10 +15,13 @@ data/*.db
 # Logs
 *.log
 
-# Environment files
+# Environment files (не коммитим реальные, но коммитим примеры)
 .env
 .env.local
+.env.production
+.env.development
 *.env.*
+!*.env.example
 
 # Dependencies
 node_modules/
@@ -54,7 +56,7 @@ htmlcov/
 .hypothesis/
 
 # Distribution / packaging
-.Python
+Python
 build/
 develop-eggs/
 dist/
@@ -80,4 +82,3 @@ wheels/
 # Temporary files
 *.tmp
 *.temp
-```

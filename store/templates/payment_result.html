@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Результат оплаты{% endblock %}
+{% block content %}
+<div class="card">
+  {% if success %}
+    <h1 class="success">✅ Оплата успешна</h1>
+    <p>Ваша подписка <b>{{ order.plan_label }}</b> активирована. Доступы выдаются автоматически.</p>
+    {% if order and order.issued_connections %}
+      <p>Созданные подключения ({{ order.issued_connections|length }}):</p>
+      <ul>
+        {% for c in order.issued_connections %}
+          <li>{{ c.server }} ({{ c.protocol }})</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% else %}
+    <h1 class="error">❌ Оплата не прошла</h1>
+    <p>Вы можете попробовать ещё раз или обратиться в поддержку.</p>
+  {% endif %}
+  <a class="btn" href="/store/vpn/purchase">К списку тарифов</a>
+</div>
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Тикет #{{ ticket.id }}{% endblock %}
+{% block content %}
+<h1>Тикет #{{ ticket.id }} — {{ ticket.subject }}</h1>
+<div class="card">
+  {% for m in ticket.messages %}
+    <div style="margin-bottom:12px">
+      <b>{{ 'Админ' if m.author_role != 'user' else ticket.username }}</b>
+      <span class="muted">{{ m.created_at.strftime('%d.%m.%Y %H:%M') }}</span>
+      <p style="white-space:pre-wrap">{{ m.body }}</p>
+    </div>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <form method="POST" action="/store/tickets/{{ ticket.id }}/reply">
+    <label>Ответ</label>
+    <textarea name="body" rows="3" required></textarea>
+    <button class="btn" type="submit">Отправить</button>
+  </form>
+</div>
+{% endblock %}

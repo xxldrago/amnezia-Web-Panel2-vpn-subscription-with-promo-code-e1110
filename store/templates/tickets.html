@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Поддержка — тикеты{% endblock %}
+{% block content %}
+<h1>Тикеты поддержки</h1>
+
+<div class="card">
+  <h3>Создать тикет</h3>
+  <form method="POST" action="/store/tickets">
+    <label>Тема</label>
+    <input name="subject" required>
+    <label>Сообщение</label>
+    <textarea name="body" rows="4" required></textarea>
+    <button class="btn" type="submit">Отправить</button>
+  </form>
+</div>
+
+<div class="card">
+  <h3>Мои тикеты</h3>
+  {% if tickets %}
+  <table>
+    <tr><th>#</th><th>Тема</th><th>Статус</th><th>Дата</th></tr>
+    {% for t in tickets %}
+    <tr>
+      <td>#{{ t.id }}</td>
+      <td><a href="/store/tickets/{{ t.id }}">{{ t.subject }}</a></td>
+      <td><span class="badge">{{ t.status }}</span></td>
+      <td>{{ t.created_at.strftime('%d.%m.%Y') }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+    <p class="muted">Тикетов пока нет.</p>
+  {% endif %}
+</div>
+{% endblock %}

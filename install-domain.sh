@@ -128,6 +128,16 @@ server {
     listen 80;
     server_name ${DOMAIN};
 
+    # Вложенная Flask-система store (покупка, рефералка, тикеты)
+    location /store/ {
+        proxy_pass http://127.0.0.1:5150;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+    # Amnezia Web Panel (FastAPI) — основная точка входа
     location / {
         proxy_pass http://127.0.0.1:5000;
         proxy_set_header Host \$host;
